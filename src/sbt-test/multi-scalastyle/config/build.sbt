@@ -2,7 +2,7 @@ lazy val containsMessage = taskKey[Boolean]("contains message")
 
 lazy val commonSettings = Seq(
   version := "0.1",
-  scalaVersion := "2.10.0",
+  scalaVersion := "2.12.8",
   scalastyleConfig in Test := (baseDirectory in ThisBuild).value / "scalastyle-test-config.xml",
   containsMessage := {
     val search = "File length exceeds"
@@ -16,15 +16,13 @@ lazy val commonSettings = Seq(
   }
 )
 
-lazy val root = (project in file(".")).
-  aggregate(sub1, sub2).
-  settings(commonSettings: _*).
-  settings(containsMessage := {
+lazy val root = (project in file("."))
+  .aggregate(sub1, sub2)
+  .settings(commonSettings: _*)
+  .settings(containsMessage := {
     true
   })
 
-lazy val sub1 = (project in file("sub1")).
-  settings(commonSettings: _*)
+lazy val sub1 = (project in file("sub1")).settings(commonSettings: _*)
 
-lazy val sub2 = (project in file("sub2")).
-  settings(commonSettings: _*)
+lazy val sub2 = (project in file("sub2")).settings(commonSettings: _*)
