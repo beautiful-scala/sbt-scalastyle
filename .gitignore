@@ -7,3 +7,8 @@ project/project/target
 .cache
 .idea
 *.iml
+.bloop
+.metals
+*.log
+*.orig
+.project

@@ -1,56 +1,64 @@
+enablePlugins(SbtPlugin)
 sbtPlugin := true
 
-crossSbtVersions := Vector("0.13.16", "1.0.0")
-
-scalacOptions := Seq("-deprecation", "-unchecked")
-
-organization := "org.scalastyle"
-
-name := "scalastyle-sbt-plugin"
-
-publishMavenStyle := true
-
-resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-
-resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
-
-//resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
-
-libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "1.1.0-SNAPSHOT"
+name := "sbt-scalastyle"
+organization := "com.beautiful-scala"
+description := "Scalastyle sbt plugin"
+homepage := Some(url("https://github.com/beautiful-scala/sbt-scalastyle"))
+licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
+scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/beautiful-scala/sbt-scalastyle"),
+    "scm:git:https://github.com/beautiful-scala/sbt-scalastyle.git",
+    Some("scm:git:git@github.com:beautiful-scala/sbt-scalastyle.git")
+  )
+)
+developers := List(
+  Developer(
+    "mwz",
+    "Michael Wizner",
+    "@mwz",
+    url("https://github.com/mwz")
+  ),
+  Developer(
+    "matthewfarwell",
+    "Matthew Farwell",
+    "@matthewfarwell",
+    url("http://www.farwell.co.uk")
+  )
 )
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots") 
-  else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
+scalaVersion := "2.12.8"
+scalacOptions := Seq(
+  "-encoding",
+  "UTF-8",
+  "-unchecked",
+  "-deprecation",
+  "-feature",
+  "-language:reflectiveCalls",
+  "-Yrangepos",
+  "-Yno-adapted-args",
+  "-Ywarn-dead-code",
+  "-Ywarn-numeric-widen",
+  "-Ywarn-value-discard",
+  "-Ywarn-unused-import"
+)
+cancelable in Global := true
 
-publishArtifact in Test := false
+libraryDependencies ++= Seq(
+  "com.beautiful-scala" %% "scalastyle" % "1.1.0"
+)
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+// scalafix & scalafmt
+scalafixDependencies in ThisBuild ++= Seq(
+  "com.nequissimus" %% "sort-imports" % "0.3.1"
+)
+addCommandAlias("fix", "all compile:scalafix test:scalafix")
+addCommandAlias("fixCheck", ";compile:scalafix --check ;test:scalafix --check")
+scalafmtOnCompile in ThisBuild :=
+  sys.env
+    .get("CI")
+    .forall(_.toLowerCase == "false")
 
-pomIncludeRepository := { _ => false }
-
-pomExtra := (
-  <url>http://www.scalastyle.org</url>
-  <licenses>
-    <license>
-      <name>Apache 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <scm>
-    <url>scm:git:git@github.com:scalastyle/scalastyle.git</url>
-    <connection>scm:git:git@github.com:scalastyle/scalastyle.git</connection>
-  </scm>
-  <developers>
-    <developer>
-      <id>matthewfarwell</id>
-      <name>Matthew Farwell</name>
-      <url>http://www.farwell.co.uk</url>
-    </developer>
-  </developers>)
+// plugins
+addCompilerPlugin(scalafixSemanticdb)
