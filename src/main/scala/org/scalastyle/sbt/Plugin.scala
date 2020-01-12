@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012 the original author or authors.
+// Copyright (C) 2011-2020 the original author or authors.
 // See the LICENCE.txt file distributed with this work for additional
 // information regarding copyright ownership.
 //
@@ -22,6 +22,11 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 
+import scala.io.Codec
+import scala.language.implicitConversions
+import scala.sys.process.Process
+import scala.sys.process.ProcessLogger
+
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import org.scalastyle.Directory
@@ -39,11 +44,6 @@ import sbt.Keys.unmanagedSourceDirectories
 import sbt._
 import sbt.std.TaskStreams
 
-import scala.io.Codec
-import scala.language.implicitConversions
-import scala.sys.process.Process
-import scala.sys.process.ProcessLogger
-
 object ScalastylePlugin extends AutoPlugin {
   import sbt.complete.DefaultParsers._
 
@@ -54,10 +54,15 @@ object ScalastylePlugin extends AutoPlugin {
     val scalastyleTarget = settingKey[File]("XML output file from scalastyle")
     val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
     val scalastyleConfigUrl = settingKey[Option[URL]]("Scalastyle configuration file as a URL")
-    val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
-    val scalastyleFailOnWarning = settingKey[Boolean]("If true, Scalastyle will fail the task when a warning level rule is violated")
-    val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
-    val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
+    val scalastyleFailOnError =
+      settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
+    val scalastyleFailOnWarning =
+      settingKey[Boolean]("If true, Scalastyle will fail the task when a warning level rule is violated")
+    val scalastyleConfigRefreshHours = settingKey[Integer](
+      "How many hours until next run will fetch the scalastyle-config.xml again if location is a URI."
+    )
+    val scalastyleConfigUrlCacheFile =
+      settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
     val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
   }
 
@@ -78,7 +83,19 @@ object ScalastylePlugin extends AutoPlugin {
         val targetV = target.value
         val configCacheFileV = scalastyleConfigUrlCacheFile.value
 
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, failOnWarningV, scalastyleSourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        Tasks.doScalastyle(
+          args,
+          configV,
+          configUrlV,
+          failOnErrorV,
+          failOnWarningV,
+          scalastyleSourcesV,
+          scalastyleTargetV,
+          streamsV,
+          configRefreshHoursV,
+          targetV,
+          configCacheFileV
+        )
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -115,8 +132,19 @@ object ScalastylePlugin extends AutoPlugin {
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, failOnWarning: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
-                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
+  def doScalastyle(
+    args: Seq[String],
+    config: File,
+    configUrl: Option[URL],
+    failOnError: Boolean,
+    failOnWarning: Boolean,
+    scalastyleSources: Seq[File],
+    scalastyleTarget: File,
+    streams: TaskStreams[ScopedKey[_]],
+    refreshHours: Integer,
+    target: File,
+    urlCacheFile: String
+  ): Unit = {
     val logger = streams.log
     val quietArg = "q"
     val silentArg = "s"
@@ -127,7 +155,7 @@ object Tasks {
     val silent = args.contains(silentArg)
     val warnError = args.contains(warnErrorArg)
 
-    def handleResult(hasError: Boolean, hasWarning: Boolean) {
+    def handleResult(hasError: Boolean, hasWarning: Boolean): Unit = {
       if ((hasError && failOnError) || (hasWarning && (warnError || failOnWarning))) {
         sys.error("Failing because of negative scalastyle result")
       } else if (hasError) {
@@ -137,11 +165,18 @@ object Tasks {
       }
     }
 
-    def getConfigFile(targetDirectory: File, configUrl: Option[URL], config: File, outputFile: String): File = {
+    def getConfigFile(
+      targetDirectory: File,
+      configUrl: Option[URL],
+      config: File,
+      outputFile: String
+    ): File = {
       val f = configUrl match {
         case Some(url) => {
           val targetConfigFile = target / outputFile
-          if (!targetConfigFile.exists || MILLISECONDS.toHours(new Date().getTime - targetConfigFile.lastModified) >= refreshHours) {
+          if (!targetConfigFile.exists || MILLISECONDS.toHours(
+              new Date().getTime - targetConfigFile.lastModified
+            ) >= refreshHours) {
             try {
               logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath)
               Process(targetConfigFile) #< url ! ProcessLogger(streams.log.info(_), streams.log.error(_))
@@ -170,16 +205,18 @@ object Tasks {
     def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass.getClassLoader)
 
-      val filesToProcess: Seq[File] = args.filterNot(supportedArgs.contains).map(file).filter(isInProject(scalastyleSources)) match {
-        case Nil => scalastyleSources
-        case files => files
-      }
+      val filesToProcess: Seq[File] =
+        args.filterNot(supportedArgs.contains).map(file).filter(isInProject(scalastyleSources)) match {
+          case Nil   => scalastyleSources
+          case files => files
+        }
 
       val messages = runScalastyle(config, filesToProcess)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
-      val result = printResults(messageConfig, logger, messages, quiet = quiet, silent = silent, warnError = warnError)
+      val result =
+        printResults(messageConfig, logger, messages, quiet = quiet, silent = silent, warnError = warnError)
       if (!quiet) {
         logger.success("created output: %s".format(target))
       }
@@ -195,17 +232,22 @@ object Tasks {
     }
   }
 
-  def doGenerateConfig(config: File, streams: TaskStreams[ScopedKey[_]]): Unit = {
+  def doGenerateConfig(config: File, streams: TaskStreams[ScopedKey[_]]): Unit =
     extractFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
-  }
 
   private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
     new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
   }
 
-  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false,
-                                 warnError: Boolean = false, silent: Boolean = false): OutputResult = {
+  private[this] def printResults(
+    config: Config,
+    logger: Logger,
+    messages: List[Message[FileSpec]],
+    quiet: Boolean     = false,
+    warnError: Boolean = false,
+    silent: Boolean    = false
+  ): OutputResult = {
     def now: Long = new Date().getTime
     val start = now
 
@@ -224,9 +266,10 @@ object Tasks {
     outputResult
   }
 
-  private[this] def saveToXml(config: Config, messages: List[Message[FileSpec]], path: String)(implicit codec: Codec): Unit = {
+  private[this] def saveToXml(config: Config, messages: List[Message[FileSpec]], path: String)(
+    implicit codec: Codec
+  ): Unit =
     XmlOutput.save(config, path, codec.charSet.toString, messages)
-  }
 
   private[this] implicit def enumToIterator[A](e: java.util.Enumeration[A]): Iterator[A] = new Iterator[A] {
     def next: A = e.nextElement
@@ -247,7 +290,9 @@ object Tasks {
           val entryName = connection.getEntryName
           val jarFile = connection.getJarFile
 
-          jarFile.entries.filter(_.getName == entryName).foreach { e => createFile(jarFile, e, target) }
+          jarFile.entries.filter(_.getName == entryName).foreach { e =>
+            createFile(jarFile, e, target)
+          }
         }
         case _ => // nothing
       }
@@ -260,7 +305,7 @@ object Tasks {
       scala.Console.readLine(question).toLowerCase.headOption match {
         case Some('y') => true
         case Some('n') => false
-        case _ => askUser
+        case _         => askUser
       }
     }
 
@@ -269,12 +314,15 @@ object Tasks {
 }
 
 /** Report style warnings prettily to sbt logger.
-  *
-  * @todo factor with TextOutput from scalastyle Output.scala
-  */
-private[sbt]
-class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boolean = false, silent: Boolean = false)
-    extends Output[T] {
+ *
+ * @todo factor with TextOutput from scalastyle Output.scala
+ */
+private[sbt] class SbtLogOutput[T <: FileSpec](
+  config: Config,
+  logger: Logger,
+  warnError: Boolean = false,
+  silent: Boolean    = false
+) extends Output[T] {
   import org.scalastyle.EndFile
   import org.scalastyle.EndWork
   import org.scalastyle.ErrorLevel
@@ -290,14 +338,16 @@ class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boo
   private val messageHelper = new MessageHelper(config)
 
   override def message(m: Message[T]): Unit = m match {
-    case StartWork() => logger.verbose("Starting scalastyle")
-    case EndWork() =>
+    case StartWork()     => logger.verbose("Starting scalastyle")
+    case EndWork()       =>
     case StartFile(file) => logger.verbose("start file " + file)
-    case EndFile(file) => logger.verbose("end file " + file)
+    case EndFile(file)   => logger.verbose("end file " + file)
     case StyleError(file, clazz, key, level, args, line, column, customMessage) => {
       if (!silent) {
-        plevel(level)(location(file, line, column) + ": " +
-            Output.findMessage(messageHelper, key, args, customMessage))
+        plevel(level)(
+          location(file, line, column) + ": " +
+          Output.findMessage(messageHelper, key, args, customMessage)
+        )
       }
     }
     case StyleException(file, clazz, message, stacktrace, line, column) => {
@@ -306,11 +356,12 @@ class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boo
   }
 
   private[this] def plevel(level: Level)(msg: => String): Unit = level match {
-    case ErrorLevel => logger.error(msg)
+    case ErrorLevel   => logger.error(msg)
     case WarningLevel => if (warnError) logger.error(msg) else logger.warn(msg)
-    case InfoLevel => logger.info(msg)
+    case InfoLevel    => logger.info(msg)
   }
 
-  private[this] def location(file: T, line: Option[Int], column: Option[Int]): String = file.name +
-     line.map(n => ":" + n + column.map(":" + _).getOrElse("")).getOrElse("")
+  private[this] def location(file: T, line: Option[Int], column: Option[Int]): String =
+    file.name +
+    line.map(n => ":" + n + column.map(":" + _).getOrElse("")).getOrElse("")
 }
