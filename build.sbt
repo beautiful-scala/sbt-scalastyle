@@ -1,4 +1,5 @@
 enablePlugins(SbtPlugin)
+enablePlugins(BuildInfoPlugin)
 sbtPlugin := true
 
 name := "sbt-scalastyle"
@@ -28,7 +29,7 @@ developers := List(
   )
 )
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.10"
 scalacOptions := Seq(
   "-encoding",
   "UTF-8",
@@ -45,16 +46,20 @@ scalacOptions := Seq(
 )
 cancelable in Global := true
 
-libraryDependencies ++= Seq(
-  "com.beautiful-scala" %% "scalastyle" % "1.1.1"
-)
+libraryDependencies += "com.beautiful-scala" %% "scalastyle" % "1.1.1"
+
+// build info
+buildInfoKeys := Seq[BuildInfoKey](organization, name, version, scalaVersion, sbtVersion)
+buildInfoPackage := "org.scalastyle.sbt"
 
 // scalafix & scalafmt
 scalafixDependencies in ThisBuild ++= Seq(
   "com.nequissimus" %% "sort-imports" % "0.3.1"
 )
-addCommandAlias("fix", "all compile:scalafix test:scalafix")
-addCommandAlias("fixCheck", ";compile:scalafix --check ;test:scalafix --check")
+addCommandAlias("fix", "all compile:scalafix test:scalafix; fixImports")
+addCommandAlias("fixImports", "compile:scalafix SortImports; test:scalafix SortImports")
+addCommandAlias("fixCheck", "compile:scalafix --check; test:scalafix --check; fixCheckImports")
+addCommandAlias("fixCheckImports", "compile:scalafix --check SortImports; test:scalafix --check SortImports")
 scalafmtOnCompile in ThisBuild :=
   sys.env
     .get("CI")
