@@ -31,12 +31,14 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
+import org.scalastyle.Main
 import org.scalastyle.Message
 import org.scalastyle.Output
 import org.scalastyle.OutputResult
 import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.XmlOutput
+import org.scalastyle.{BuildInfo => ScalastyleBuildInfo}
 import sbt.ConfigKey.configurationToKey
 import sbt.Keys.streams
 import sbt.Keys.target
@@ -216,7 +218,14 @@ object Tasks {
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
       val result =
-        printResults(messageConfig, logger, messages, quiet = quiet, silent = silent, warnError = warnError)
+        printResults(
+          messageConfig,
+          logger,
+          messages,
+          quiet = quiet,
+          silent = silent,
+          warnError = warnError
+        )
       if (!quiet) {
         logger.success("created output: %s".format(target))
       }
@@ -233,7 +242,7 @@ object Tasks {
   }
 
   def doGenerateConfig(config: File, streams: TaskStreams[ScopedKey[_]]): Unit =
-    extractFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
+    extractFileFromJar(Main.getClass.getResource("/default_config.xml"), config.absolutePath, streams.log)
 
   private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
@@ -255,11 +264,13 @@ object Tasks {
       new SbtLogOutput(config, logger, warnError = warnError, silent = silent).output(messages)
     // scalastyle:off regex
     if (!quiet) {
-      logger.info("scalastyle Processed " + outputResult.files + " file(s)")
-      logger.info("scalastyle Found " + outputResult.errors + " errors")
-      logger.info("scalastyle Found " + outputResult.warnings + " warnings")
-      logger.info("scalastyle Found " + outputResult.infos + " infos")
-      logger.info("scalastyle Finished in " + (now - start) + " ms")
+      logger.info("scalastyle version " + ScalastyleBuildInfo.version)
+      logger.info("sbt-scalastyle version " + BuildInfo.version)
+      logger.info("scalastyle processed " + outputResult.files + " file(s)")
+      logger.info("scalastyle found " + outputResult.errors + " errors")
+      logger.info("scalastyle found " + outputResult.warnings + " warnings")
+      logger.info("scalastyle found " + outputResult.infos + " infos")
+      logger.info("scalastyle finished in " + (now - start) + " ms")
     }
     // scalastyle:on regex
 
@@ -284,32 +295,17 @@ object Tasks {
 
     val target = file(destination)
 
-    if (safeToCreateFile(target)) {
-      url.openConnection match {
-        case connection: java.net.JarURLConnection => {
-          val entryName = connection.getEntryName
-          val jarFile = connection.getJarFile
+    url.openConnection match {
+      case connection: java.net.JarURLConnection => {
+        val entryName = connection.getEntryName
+        val jarFile = connection.getJarFile
 
-          jarFile.entries.filter(_.getName == entryName).foreach { e =>
-            createFile(jarFile, e, target)
-          }
+        jarFile.entries.filter(_.getName == entryName).foreach { e =>
+          createFile(jarFile, e, target)
         }
-        case _ => // nothing
       }
+      case _ => // nothing
     }
-  }
-
-  private[this] def safeToCreateFile(file: File): Boolean = {
-    def askUser: Boolean = {
-      val question = "The file %s exists, do you want to overwrite it? (y/n): ".format(file.getPath)
-      scala.Console.readLine(question).toLowerCase.headOption match {
-        case Some('y') => true
-        case Some('n') => false
-        case _         => askUser
-      }
-    }
-
-    if (file.exists) askUser else true
   }
 }
 
