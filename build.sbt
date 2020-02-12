@@ -46,7 +46,7 @@ scalacOptions := Seq(
 cancelable in Global := true
 
 libraryDependencies ++= Seq(
-  "com.beautiful-scala" %% "scalastyle" % "1.1.1"
+  "com.beautiful-scala" %% "scalastyle" % "1.2.0"
 )
 
 // scalafix & scalafmt
