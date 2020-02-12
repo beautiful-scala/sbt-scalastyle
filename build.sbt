@@ -46,7 +46,7 @@ scalacOptions := Seq(
 )
 cancelable in Global := true
 
-libraryDependencies += "com.beautiful-scala" %% "scalastyle" % "1.1.1"
+libraryDependencies += "com.beautiful-scala" %% "scalastyle" % "1.2.0"
 
 // build info
 buildInfoKeys := Seq[BuildInfoKey](organization, name, version, scalaVersion, sbtVersion)
