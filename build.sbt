@@ -54,7 +54,7 @@ buildInfoPackage := "org.scalastyle.sbt"
 
 // scalafix & scalafmt
 scalafixDependencies in ThisBuild ++= Seq(
-  "com.nequissimus" %% "sort-imports" % "0.3.2"
+  "com.nequissimus" %% "sort-imports" % "36845576"
 )
 addCommandAlias("fix", "all compile:scalafix test:scalafix; fixImports")
 addCommandAlias("fixImports", "compile:scalafix SortImports; test:scalafix SortImports")
