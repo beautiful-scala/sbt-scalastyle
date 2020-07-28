@@ -29,7 +29,7 @@ developers := List(
   )
 )
 
-scalaVersion := "2.12.11"
+scalaVersion := "2.12.12"
 scalacOptions := Seq(
   "-encoding",
   "UTF-8",
@@ -46,7 +46,7 @@ scalacOptions := Seq(
 )
 cancelable in Global := true
 
-libraryDependencies += "com.beautiful-scala" %% "scalastyle" % "1.4.0"
+libraryDependencies += "com.beautiful-scala" %% "scalastyle" % "1.5.0"
 
 // build info
 buildInfoKeys := Seq[BuildInfoKey](organization, name, version, scalaVersion, sbtVersion)

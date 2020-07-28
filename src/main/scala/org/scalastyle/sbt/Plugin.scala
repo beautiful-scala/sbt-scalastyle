@@ -129,8 +129,8 @@ object ScalastylePlugin extends AutoPlugin {
       scalastyleSources := (unmanagedSourceDirectories in Compile).value,
       (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value
     ) ++
-    Project.inConfig(Compile)(rawScalastyleSettings()) ++
-    Project.inConfig(Test)(rawScalastyleSettings())
+        Project.inConfig(Compile)(rawScalastyleSettings()) ++
+        Project.inConfig(Test)(rawScalastyleSettings())
 }
 
 object Tasks {
@@ -158,13 +158,12 @@ object Tasks {
     val warnError = args.contains(warnErrorArg)
 
     def handleResult(hasError: Boolean, hasWarning: Boolean): Unit = {
-      if ((hasError && failOnError) || (hasWarning && (warnError || failOnWarning))) {
+      if ((hasError && failOnError) || (hasWarning && (warnError || failOnWarning)))
         sys.error("Failing because of negative scalastyle result")
-      } else if (hasError) {
+      else if (hasError)
         logger.error("errors exist")
-      } else if (hasWarning) {
+      else if (hasWarning)
         logger.warn("warnings exist")
-      }
     }
 
     def getConfigFile(
@@ -174,11 +173,13 @@ object Tasks {
       outputFile: String
     ): File = {
       val f = configUrl match {
-        case Some(url) => {
+        case Some(url) =>
           val targetConfigFile = target / outputFile
-          if (!targetConfigFile.exists || MILLISECONDS.toHours(
+          if (
+            !targetConfigFile.exists || MILLISECONDS.toHours(
               new Date().getTime - targetConfigFile.lastModified
-            ) >= refreshHours) {
+            ) >= refreshHours
+          ) {
             try {
               logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath)
               Process(targetConfigFile) #< url ! ProcessLogger(streams.log.info(_), streams.log.error(_))
@@ -187,13 +188,11 @@ object Tasks {
             }
           }
           targetConfigFile
-        }
         case None => config
       }
 
-      if (!quiet) {
+      if (!quiet)
         logger.info("scalastyle using config " + f.getAbsolutePath)
-      }
 
       f
     }
@@ -226,19 +225,17 @@ object Tasks {
           silent = silent,
           warnError = warnError
         )
-      if (!quiet) {
+      if (!quiet)
         logger.success("created output: %s".format(target))
-      }
 
       handleResult(hasError = result.errors > 0, hasWarning = result.warnings > 0)
     }
 
     val configFileToUse = getConfigFile(target, configUrl, config, urlCacheFile)
-    if (configFileToUse.exists) {
+    if (configFileToUse.exists)
       doScalastyleWithConfig(configFileToUse)
-    } else {
+    else
       sys.error("config does not exist: %s".format(configFileToUse))
-    }
   }
 
   def doGenerateConfig(config: File, streams: TaskStreams[ScopedKey[_]]): Unit =
@@ -282,10 +279,11 @@ object Tasks {
   ): Unit =
     XmlOutput.save(config, path, codec.charSet.toString, messages)
 
-  private[this] implicit def enumToIterator[A](e: java.util.Enumeration[A]): Iterator[A] = new Iterator[A] {
-    def next: A = e.nextElement
-    def hasNext: Boolean = e.hasMoreElements
-  }
+  private[this] implicit def enumToIterator[A](e: java.util.Enumeration[A]): Iterator[A] =
+    new Iterator[A] {
+      def next: A = e.nextElement
+      def hasNext: Boolean = e.hasMoreElements
+    }
 
   private[this] def extractFileFromJar(url: java.net.URL, destination: String, logger: Logger): Unit = {
     def createFile(jarFile: JarFile, e: JarEntry, target: File): Unit = {
@@ -296,20 +294,20 @@ object Tasks {
     val target = file(destination)
 
     url.openConnection match {
-      case connection: java.net.JarURLConnection => {
+      case connection: java.net.JarURLConnection =>
         val entryName = connection.getEntryName
         val jarFile = connection.getJarFile
 
         jarFile.entries.filter(_.getName == entryName).foreach { e =>
           createFile(jarFile, e, target)
         }
-      }
       case _ => // nothing
     }
   }
 }
 
-/** Report style warnings prettily to sbt logger.
+/**
+ * Report style warnings prettily to sbt logger.
  *
  * @todo factor with TextOutput from scalastyle Output.scala
  */
@@ -333,31 +331,31 @@ private[sbt] class SbtLogOutput[T <: FileSpec](
 
   private val messageHelper = new MessageHelper(config)
 
-  override def message(m: Message[T]): Unit = m match {
-    case StartWork()     => logger.verbose("Starting scalastyle")
-    case EndWork()       =>
-    case StartFile(file) => logger.verbose("start file " + file)
-    case EndFile(file)   => logger.verbose("end file " + file)
-    case StyleError(file, clazz, key, level, args, line, column, customMessage) => {
-      if (!silent) {
-        plevel(level)(
-          location(file, line, column) + ": " +
-          Output.findMessage(messageHelper, key, args, customMessage)
-        )
-      }
+  override def message(m: Message[T]): Unit =
+    m match {
+      case StartWork()     => logger.verbose("Starting scalastyle")
+      case EndWork()       =>
+      case StartFile(file) => logger.verbose("start file " + file)
+      case EndFile(file)   => logger.verbose("end file " + file)
+      case StyleError(file, clazz, key, level, args, line, column, customMessage) =>
+        if (!silent) {
+          plevel(level)(
+            location(file, line, column) + ": " +
+                Output.findMessage(messageHelper, key, args, customMessage)
+          )
+        }
+      case StyleException(file, clazz, message, stacktrace, line, column) =>
+        if (!silent) logger.error(location(file, line, column) + ": " + message)
     }
-    case StyleException(file, clazz, message, stacktrace, line, column) => {
-      if (!silent) logger.error(location(file, line, column) + ": " + message)
-    }
-  }
 
-  private[this] def plevel(level: Level)(msg: => String): Unit = level match {
-    case ErrorLevel   => logger.error(msg)
-    case WarningLevel => if (warnError) logger.error(msg) else logger.warn(msg)
-    case InfoLevel    => logger.info(msg)
-  }
+  private[this] def plevel(level: Level)(msg: => String): Unit =
+    level match {
+      case ErrorLevel   => logger.error(msg)
+      case WarningLevel => if (warnError) logger.error(msg) else logger.warn(msg)
+      case InfoLevel    => logger.info(msg)
+    }
 
   private[this] def location(file: T, line: Option[Int], column: Option[Int]): String =
     file.name +
-    line.map(n => ":" + n + column.map(":" + _).getOrElse("")).getOrElse("")
+        line.map(n => ":" + n + column.map(":" + _).getOrElse("")).getOrElse("")
 }
