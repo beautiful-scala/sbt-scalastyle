@@ -29,7 +29,7 @@ developers := List(
   )
 )
 
-scalaVersion := "2.12.12"
+scalaVersion := "2.12.14"
 scalacOptions := Seq(
   "-encoding",
   "UTF-8",
